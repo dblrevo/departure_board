@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SE London Departures</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Chakra+Petch:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0c0f;
+    --panel: #0f1318;
+    --border: #1e2530;
+    --border-bright: #2a3545;
+    --amber: #f5a623;
+    --amber-dim: #7a5010;
+    --green: #39ff6a;
+    --green-dim: #1a4a2a;
+    --red: #ff4444;
+    --blue: #4db8ff;
+    --text-primary: #e8dfc8;
+    --text-dim: #5a6070;
+    --text-mid: #8a9090;
+    --mono: 'Share Tech Mono', monospace;
+    --head: 'Chakra Petch', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: var(--mono);
+    min-height: 100vh;
+    padding: 16px;
+    background-image:
+      radial-gradient(ellipse 80% 40% at 50% -10%, rgba(245,166,35,0.06) 0%, transparent 70%),
+      repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(255,255,255,0.015) 39px, rgba(255,255,255,0.015) 40px),
+      repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(255,255,255,0.008) 39px, rgba(255,255,255,0.008) 40px);
+  }
+
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border-bright);
+  }
+
+  .header-left h1 {
+    font-family: var(--head);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--amber);
+    margin-bottom: 2px;
+  }
+
+  .header-left p {
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.15em;
+  }
+
+  .clock {
+    font-family: var(--mono);
+    font-size: 28px;
+    color: var(--amber);
+    letter-spacing: 0.05em;
+    text-shadow: 0 0 20px rgba(245,166,35,0.4);
+    line-height: 1;
+  }
+
+  .clock-date {
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.15em;
+    text-align: right;
+    margin-top: 3px;
+  }
+
+  .status-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 20px;
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.12em;
+  }
+
+  .status-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 8px var(--green);
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  .status-dot.error { background: var(--red); box-shadow: 0 0 8px var(--red); animation: none; }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  .stops-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .stop-panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .stop-panel::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--amber), transparent);
+  }
+
+  .stop-panel.overground::before {
+    background: linear-gradient(90deg, var(--blue), transparent);
+  }
+
+  .stop-header {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    padding: 10px 14px;
+    background: rgba(255,255,255,0.02);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .stop-name {
+    font-family: var(--head);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-primary);
+  }
+
+  .stop-meta {
+    font-size: 9px;
+    color: var(--text-dim);
+    letter-spacing: 0.15em;
+    margin-top: 2px;
+  }
+
+  .stop-badge {
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    padding: 3px 8px;
+    border: 1px solid var(--amber-dim);
+    color: var(--amber);
+    border-radius: 1px;
+    font-family: var(--head);
+    font-weight: 600;
+  }
+
+  .stop-badge.overground {
+    border-color: rgba(77,184,255,0.3);
+    color: var(--blue);
+  }
+
+  .departures-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .departures-table th {
+    font-size: 8px;
+    letter-spacing: 0.2em;
+    color: var(--text-dim);
+    text-align: left;
+    padding: 6px 14px;
+    border-bottom: 1px solid var(--border);
+    font-family: var(--head);
+    font-weight: 400;
+    text-transform: uppercase;
+  }
+
+  .departures-table th.right { text-align: right; }
+
+  .departure-row {
+    border-bottom: 1px solid rgba(30,37,48,0.6);
+    transition: background 0.15s;
+  }
+
+  .departure-row:last-child { border-bottom: none; }
+  .departure-row:hover { background: rgba(255,255,255,0.02); }
+
+  .departure-row.highlighted td { background: rgba(245,166,35,0.04); }
+  .departure-row.highlighted .mins-cell { color: var(--green); text-shadow: 0 0 10px rgba(57,255,106,0.5); }
+
+  .departure-row td {
+    padding: 9px 14px;
+    font-size: 12px;
+    vertical-align: middle;
+  }
+
+  .route-cell {
+    font-family: var(--head);
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--amber);
+    width: 70px;
+    white-space: nowrap;
+  }
+
+  .route-cell.overground { color: var(--blue); font-size: 10px; }
+
+  .dest-cell {
+    color: var(--text-primary);
+    font-size: 11px;
+    letter-spacing: 0.05em;
+  }
+
+  .dest-cell .platform {
+    font-size: 9px;
+    color: var(--text-dim);
+    margin-top: 1px;
+    letter-spacing: 0.1em;
+  }
+
+  .dest-cell .platform.platform1 { color: var(--amber); opacity: 0.8; }
+
+  .time-cell {
+    text-align: right;
+    font-size: 10px;
+    color: var(--text-mid);
+    white-space: nowrap;
+    width: 60px;
+  }
+
+  .mins-cell {
+    text-align: right;
+    font-family: var(--head);
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--amber);
+    white-space: nowrap;
+    width: 70px;
+  }
+
+  .mins-cell .due { color: var(--green); font-size: 11px; letter-spacing: 0.1em; text-shadow: 0 0 10px rgba(57,255,106,0.6); }
+
+  .empty-row td {
+    padding: 16px 14px;
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.15em;
+    text-align: center;
+  }
+
+  .loading-row td {
+    padding: 16px 14px;
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.15em;
+    text-align: center;
+    animation: flicker 1.5s ease-in-out infinite;
+  }
+
+  @keyframes flicker {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+  }
+
+  .refresh-info {
+    text-align: center;
+    font-size: 9px;
+    color: var(--text-dim);
+    letter-spacing: 0.15em;
+    margin-top: 16px;
+    padding-bottom: 8px;
+  }
+
+  .scanline {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.03) 2px,
+      rgba(0,0,0,0.03) 4px
+    );
+    z-index: 100;
+  }
+</style>
+</head>
+<body>
+<div class="scanline"></div>
+
+<header>
+  <div class="header-left">
+    <h1>SE London Departures</h1>
+    <p>Crystal Palace Park Rd · Sydenham</p>
+  </div>
+  <div>
+    <div class="clock" id="clock">--:--:--</div>
+    <div class="clock-date" id="date">---</div>
+  </div>
+</header>
+
+<div class="status-bar">
+  <div class="status-dot" id="statusDot"></div>
+  <span id="statusText">CONNECTING TO TFL API...</span>
+</div>
+
+<div class="stops-grid" id="stopsGrid">
+  <!-- panels injected by JS -->
+</div>
+
+<div class="refresh-info">AUTO-REFRESH EVERY 45 SECONDS</div>
+
+<script>
+const STOPS = [
+  {
+    id: "490004999E",
+    label: "Charleville Circus",
+    sublabel: "Stop V · towards Forest Hill / Lower Sydenham",
+    badge: "BUS",
+    type: "bus",
+    filter: null
+  },
+  {
+    id: "490014535S2",
+    label: "Crystal Palace Pk Rd / Charleville Cir",
+    sublabel: "Stop G · towards Beckenham",
+    badge: "BUS",
+    type: "bus",
+    filter: null
+  },
+  {
+    id: "HUBSYD",
+    label: "Sydenham Rail Station",
+    sublabel: "Windrush Line · Overground",
+    badge: "OVERGROUND",
+    type: "overground",
+    filter: null,
+    highlightPlatform: "Platform 1"
+  }
+];
+
+function formatTime(isoString) {
+  const d = new Date(isoString);
+  return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+}
+
+function formatMins(seconds) {
+  const m = Math.round(seconds / 60);
+  if (m <= 0) return '<span class="due">DUE</span>';
+  return m + '<span style="font-size:10px;font-weight:400;color:var(--text-dim)"> min</span>';
+}
+
+function routeLabel(arrival, type) {
+  if (type === 'overground') return arrival.lineName || 'Windrush';
+  return arrival.lineName || arrival.lineId || '?';
+}
+
+function buildPanel(stop) {
+  const panel = document.createElement('div');
+  panel.className = 'stop-panel' + (stop.type === 'overground' ? ' overground' : '');
+  panel.id = 'panel-' + stop.id;
+
+  panel.innerHTML = `
+    <div class="stop-header">
+      <div>
+        <div class="stop-name">${stop.label}</div>
+        <div class="stop-meta">${stop.sublabel}</div>
+      </div>
+      <div class="stop-badge ${stop.type === 'overground' ? 'overground' : ''}">${stop.badge}</div>
+    </div>
+    <table class="departures-table">
+      <thead>
+        <tr>
+          <th>Route</th>
+          <th>Destination</th>
+          <th class="right">Time</th>
+          <th class="right">Mins</th>
+        </tr>
+      </thead>
+      <tbody id="tbody-${stop.id}">
+        <tr class="loading-row"><td colspan="4">FETCHING DEPARTURES...</td></tr>
+      </tbody>
+    </table>
+  `;
+  return panel;
+}
+
+async function fetchStop(stop) {
+  const url = `https://api.tfl.gov.uk/StopPoint/${stop.id}/arrivals`;
+  const resp = await fetch(url);
+  if (!resp.ok) throw new Error('HTTP ' + resp.status);
+  const data = await resp.json();
+  return data.sort((a, b) => a.timeToStation - b.timeToStation);
+}
+
+function renderArrivals(stop, arrivals) {
+  const tbody = document.getElementById('tbody-' + stop.id);
+  if (!tbody) return;
+
+  if (!arrivals || arrivals.length === 0) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="4">NO DEPARTURES IN NEXT 30 MIN</td></tr>';
+    return;
+  }
+
+  // Show up to 6 next departures
+  const rows = arrivals.slice(0, 6).map(a => {
+    const isHighlighted = stop.highlightPlatform && a.platformName === stop.highlightPlatform;
+    const platformClass = a.platformName === 'Platform 1' ? 'platform1' : '';
+    const routeClass = stop.type === 'overground' ? 'overground' : '';
+    const destName = a.destinationName
+      .replace(' Rail Station', '')
+      .replace(' Underground Station', '');
+
+    return `<tr class="departure-row ${isHighlighted ? 'highlighted' : ''}">
+      <td class="route-cell ${routeClass}">${routeLabel(a, stop.type)}</td>
+      <td class="dest-cell">
+        ${destName}
+        ${a.platformName && a.platformName !== 'Platform Unknown'
+          ? `<div class="platform ${platformClass}">${a.platformName.toUpperCase()}</div>`
+          : ''}
+      </td>
+      <td class="time-cell">${formatTime(a.expectedArrival)}</td>
+      <td class="mins-cell">${formatMins(a.timeToStation)}</td>
+    </tr>`;
+  }).join('');
+
+  tbody.innerHTML = rows;
+}
+
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent =
+    now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  document.getElementById('date').textContent =
+    now.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }).toUpperCase();
+}
+
+async function refreshAll() {
+  const dot = document.getElementById('statusDot');
+  const statusText = document.getElementById('statusText');
+
+  try {
+    await Promise.all(STOPS.map(async stop => {
+      try {
+        const arrivals = await fetchStop(stop);
+        renderArrivals(stop, arrivals);
+      } catch (e) {
+        const tbody = document.getElementById('tbody-' + stop.id);
+        if (tbody) tbody.innerHTML = '<tr class="empty-row"><td colspan="4">ERROR FETCHING DATA</td></tr>';
+      }
+    }));
+
+    dot.className = 'status-dot';
+    const now = new Date();
+    statusText.textContent = 'LIVE · LAST UPDATED ' +
+      now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  } catch(e) {
+    dot.className = 'status-dot error';
+    statusText.textContent = 'CONNECTION ERROR';
+  }
+}
+
+// Build panels
+const grid = document.getElementById('stopsGrid');
+STOPS.forEach(stop => grid.appendChild(buildPanel(stop)));
+
+// Start clock
+updateClock();
+setInterval(updateClock, 1000);
+
+// Initial fetch then every 45s
+refreshAll();
+setInterval(refreshAll, 45000);
+</script>
+</body>
+</html>
