@@ -1,7 +1,7 @@
 {
   "name": "SE London Departures",
   "short_name": "Departures",
-  "start_url": "/",
+  "start_url": "/departure_board/index.html",
   "display": "standalone",
   "background_color": "#0a0c0f",
   "theme_color": "#0a0c0f",
